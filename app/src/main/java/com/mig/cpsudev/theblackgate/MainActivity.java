@@ -31,9 +31,9 @@ public class MainActivity extends AppCompatActivity {
     private NfcAdapter mNfcAdapter;
     private IntentFilter[] mWriteTagFilters;
     private PendingIntent mNfcPendingIntent;
-    private boolean writeProtect = false;
     private Context context;
-    private String uniqueId = " ";
+    WriteResponse wr = new WriteResponse();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -45,8 +45,8 @@ public class MainActivity extends AppCompatActivity {
         okBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                uniqueId = input.getText().toString();
-                Toast.makeText(MainActivity.this,"Set Text Complete",Toast.LENGTH_SHORT).show();
+                wr.setUniqueId(input.getText().toString());
+                Toast.makeText(MainActivity.this, "Set Text Complete", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -73,11 +73,18 @@ public class MainActivity extends AppCompatActivity {
         if (mNfcAdapter != null) {
             if (!mNfcAdapter.isEnabled()) {
                 new AlertDialog.Builder(this)
+                        .setMessage("Please Turn On your NFC")
                         .setPositiveButton("Update Settings", new DialogInterface.OnClickListener() {
                             @Override
                             public void onClick(DialogInterface dialog, int which) {
                                 Intent setnfc = new Intent(Settings.ACTION_WIRELESS_SETTINGS);
                                 startActivity(setnfc);
+                            }
+                        })
+                        .setNegativeButton("Cancle", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                finish();
                             }
                         })
                         .setOnCancelListener(new DialogInterface.OnCancelListener() {
@@ -105,120 +112,19 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
-
         if (NfcAdapter.ACTION_TAG_DISCOVERED.equals(intent.getAction())) {
             Tag detectedTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-            if (supportedTechs(detectedTag.getTechList())) {
-                if (writableTag(detectedTag)) {
-                    WriteResponse wr = writeTag(getTagAsNdef(),detectedTag);
-                    String message = (wr.getStatus() == 1? "Success:":"Failed:") + wr.getMessage();
+            if (wr.supportedTechs(detectedTag.getTechList())) {
+                if (wr.writableTag(detectedTag, context)) {
+                    wr.writeTag(wr.getTagAsNdef(), detectedTag);
+                    String message = (wr.getStatus() == 1 ? "Success:" : "Failed:") + wr.getMessage();
                     Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show();
-                }else{
+                } else {
                     Toast.makeText(context, "This tag is not writable", Toast.LENGTH_SHORT).show();
                 }
-            }else{
-                Toast.makeText(context,"This tag type is not supported",Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
-    public static boolean supportedTechs(String[] techs) {
-        boolean ultralight = false;
-        boolean nfcA = false;
-        boolean ndef = false;
-        for (String tech : techs) {
-            if (tech.equals("android.nfc.tech.MifareUltralight")) {
-                ultralight = true;
-            } else if (tech.equals("android.nfc.tech.NfcA")) {
-                nfcA = true;
-            } else if (tech.equals("android.nfc.tech.Ndef") || tech.equals("android.nfc.tech.NdefFormatable")) {
-                ndef = true;
-            }
-        }
-        if (ultralight || nfcA || ndef) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private boolean writableTag(Tag tag) {
-        try {
-            Ndef ndef = Ndef.get(tag);
-            if (ndef != null) {
-                ndef.connect();
-                if (!ndef.isWritable()) {
-                    Toast.makeText(context, "Tag is read-only.", Toast.LENGTH_SHORT).show();
-                    ndef.close();
-                    return false;
-                }
-                ndef.close();
-                return true;
-            }
-        } catch (Exception e) {
-            Toast.makeText(context, "Failed to read tag", Toast.LENGTH_SHORT).show();
-        }
-        return false;
-    }
-
-    public WriteResponse writeTag(NdefMessage message, Tag tag) {
-        int size = message.toByteArray().length;
-        String mess = "";
-        try {
-            Ndef ndef = Ndef.get(tag);
-            if (ndef != null) {
-                ndef.connect();
-                if (!ndef.isWritable()) {
-                    return new WriteResponse(0,"Tag is read-only");
-                }
-                if (ndef.getMaxSize() < size) {
-                    mess = "Tag capacity is " + ndef.getMaxSize() + " bytes, message is " + size
-                            + " bytes.";
-                    return new WriteResponse(0,mess);
-                }
-                ndef.writeNdefMessage(message);
-                if(writeProtect) ndef.makeReadOnly();
-                mess = "Wrote message to pre-formatted tag.";
-                return new WriteResponse(1,mess);
             } else {
-                NdefFormatable format = NdefFormatable.get(tag);
-                if (format != null) {
-                    try {
-                        format.connect();
-                        format.format(message);
-                        mess = "Formatted tag and wrote message";
-                        return new WriteResponse(1,mess);
-                    } catch (IOException e) {
-                        mess = "Failed to format tag.";
-                        return new WriteResponse(0,mess);
-                    }
-                } else {
-                    mess = "Tag doesn't support NDEF.";
-                    return new WriteResponse(0,mess);
-                }
+                Toast.makeText(context, "This tag type is not supported", Toast.LENGTH_SHORT).show();
             }
-        } catch (Exception e) {
-            mess = "Failed to write tag";
-            return new WriteResponse(0,mess);
-        }
-    }
-
-    private NdefMessage getTagAsNdef() {
-        boolean addAAR = false;
-        byte[] uriField = uniqueId.getBytes(Charset.forName("US-ASCII"));
-        byte[] payload = new byte[uriField.length + 1];       //add 1 for the URI Prefix
-        payload[0] = 0x01;                        //prefixes http://www. to the URI
-        System.arraycopy(uriField, 0, payload, 1, uriField.length); //appends URI to payload
-        NdefRecord rtdUriRecord = new NdefRecord(
-                NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_URI, new byte[0], payload);
-        if(addAAR) {
-            // note: returns AAR for different app (nfcreadtag)
-            return new NdefMessage(new NdefRecord[] {
-                    rtdUriRecord, NdefRecord.createApplicationRecord("com.mig.cpsudev.theblackgate")
-            });
-        } else {
-            return new NdefMessage(new NdefRecord[] {
-                    rtdUriRecord});
         }
     }
 }
