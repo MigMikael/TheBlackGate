@@ -37,7 +37,7 @@ public class WriteActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.activity_write);
 
         final EditText input = (EditText) findViewById(R.id.editText);
         input.setText("google.com");
