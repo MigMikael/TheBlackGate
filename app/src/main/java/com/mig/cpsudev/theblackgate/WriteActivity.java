@@ -116,7 +116,7 @@ public class WriteActivity extends AppCompatActivity {
             Tag detectedTag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
             if (wr.supportedTechs(detectedTag.getTechList())) {
                 if (wr.writableTag(detectedTag, context)) {
-                    wr.writeTag(wr.getTagAsNdef(), detectedTag);
+                    wr.writeTag(wr.getTagAsNdef2(), detectedTag);
                     String message = (wr.getStatus() == 1 ? "Success:" : "Failed:") + wr.getMessage();
                     Toast.makeText(WriteActivity.this, message, Toast.LENGTH_SHORT).show();
                 } else {

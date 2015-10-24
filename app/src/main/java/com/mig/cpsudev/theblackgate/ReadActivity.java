@@ -26,26 +26,30 @@ public class ReadActivity extends AppCompatActivity {
     private NfcAdapter mNfcAdapter;
     private IntentFilter[] mNdefExchangeFilters;
     private PendingIntent mNfcPendingIntent;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_read);
         mNfcAdapter = NfcAdapter.getDefaultAdapter(ReadActivity.this);
-        mNfcPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this,
-                getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP), 0);
+        mNfcPendingIntent = PendingIntent.getActivity(
+                this,
+                0,
+                new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                0);
         IntentFilter smartwhere = new IntentFilter(NfcAdapter.ACTION_NDEF_DISCOVERED);
         smartwhere.addDataScheme("http");
         smartwhere.addDataAuthority("www.smartwhere.com", null);
         smartwhere.addDataPath(".*", PatternMatcher.PATTERN_SIMPLE_GLOB);
-        mNdefExchangeFilters = new IntentFilter[] { smartwhere };
+        mNdefExchangeFilters = new IntentFilter[]{smartwhere};
     }
+
     @Override
     protected void onResume() {
         super.onResume();
-        if(mNfcAdapter != null) {
+        if (mNfcAdapter != null) {
             mNfcAdapter.enableForegroundDispatch(this, mNfcPendingIntent, mNdefExchangeFilters, null);
-            if (!mNfcAdapter.isEnabled()){
+            if (!mNfcAdapter.isEnabled()) {
                 new AlertDialog.Builder(this)
                         .setMessage("Please Turn On your NFC")
                         .setPositiveButton("Update Settings", new DialogInterface.OnClickListener() {
@@ -73,11 +77,13 @@ public class ReadActivity extends AppCompatActivity {
             Toast.makeText(getApplicationContext(), "Sorry, No NFC Adapter found.", Toast.LENGTH_SHORT).show();
         }
     }
+
     @Override
     protected void onPause() {
         super.onPause();
-        if(mNfcAdapter != null) mNfcAdapter.disableForegroundDispatch(this);
+        if (mNfcAdapter != null) mNfcAdapter.disableForegroundDispatch(this);
     }
+
     @Override
     protected void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -90,11 +96,11 @@ public class ReadActivity extends AppCompatActivity {
                     messages[i] = (NdefMessage) rawMsgs[i];
                 }
             }
-            if(messages[0] != null) {
-                String result="";
+            if (messages[0] != null) {
+                String result = "";
                 byte[] payload = messages[0].getRecords()[0].getPayload();
                 // this assumes that we get back am SOH followed by host/code
-                for (int b = 1; b<payload.length; b++) { // skip SOH
+                for (int b = 1; b < payload.length; b++) { // skip SOH
                     result += (char) payload[b];
                 }
                 Toast.makeText(getApplicationContext(), "Tag Contains " + result, Toast.LENGTH_SHORT).show();

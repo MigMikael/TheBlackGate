@@ -147,4 +147,22 @@ public class WriteResponse {
                     rtdUriRecord});
         }
     }
+
+    public NdefMessage getTagAsNdef2() {
+        String lang = "en";
+        byte[] textBytes = uniqueId.getBytes();
+        byte[] langBytes = lang.getBytes();
+        int langLength = langBytes.length;
+        int textLength = textBytes.length;
+
+        byte[] payload = new byte[1 + langLength + textLength];
+        payload[0] = (byte) langLength;
+
+        System.arraycopy(langBytes, 0, payload, 1, langLength);
+        System.arraycopy(textBytes, 0, payload, 1 + langLength, textLength);
+
+        NdefRecord recordNFC = new NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, new byte[0], payload);
+
+        return new NdefMessage(new NdefRecord[]{recordNFC});
+    }
 }
